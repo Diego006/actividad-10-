@@ -1,0 +1,61 @@
+---
+title: "Actividad 10"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Para esta ayudantia tendran que realizar el metodo de analisis bayesiano para el data set de tarjetas de credito (dentro del bloc de notas podran encontrar el link que la explicacion de las variables del data set). El objetivo para ese data set es determinar si la persona fallara o no en el pago de su credito a partir de las variables del dataset
+
+```{r}
+library(tidyverse)
+library(e1071)
+library(caret)
+library(rstan)
+library(rstanarm)
+library(titanic)
+library(ROCR)
+```
+
+Leemos el arcchivo y cargamos los datos
+
+```{r}
+setwd("C:/Users/Dieca/OneDrive/Escritorio/actividad 10")
+creditcard <- read.csv("UCI_Credit_Card.csv", sep = ",")
+glimpse(creditcard)
+
+str(creditcard)
+```
+
+```{r}
+creditcard$ID <- NULL
+
+creditcard$SEX <- factor(creditcard$SEX, levels=1:2, labels=c("Male", "Female"))
+creditcard$EDUCATION <- as.factor(creditcard$EDUCATION)
+creditcard$MARRIAGE <- as.factor(creditcard$MARRIAGE)
+creditcard$default.payment.next.month <- factor(creditcard$default.payment.next.month, levels = 0:1, labels=c("No", "Yes"))
+```
+
+
+```{r}
+set.seed(42)
+sample <- sample(1:nrow(creditcard), .8*30000)
+
+trainData <- creditcard[sample,]
+testData <-  creditcard[-sample,]
+
+model_nb <- naiveBayes(default.payment.next.month~SEX+MARRIAGE+AGE+PAY_0+PAY_6+BILL_AMT1+BILL_AMT6+PAY_AMT1+PAY_AMT6, trainData, laplace=1)
+
+pred_nb <- predict(model_nb, newdata = testData)
+confusionMatrix(data=pred_nb, reference = testData$default.payment.next.month)
+```
+
+```{r}
+pred_test_nb <- predict(model_nb, newdata = testData, type="raw")
+p_test_nb <- prediction(pred_test_nb[,2], testData$default.payment.next.month)
+perf_nb <- performance(p_test_nb, "tpr", "fpr")
+plot(perf_nb, colorize=T)
+performance(p_test_nb, "auc")@y.values
+```
+
